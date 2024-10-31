@@ -1,0 +1,11 @@
+*.ics
+*.json
+*.log
+*.md
+*.txt
+.DS_Store
+
+*.pyc
+*cpython*
+
+Dockerfile

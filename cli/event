@@ -1,0 +1,8 @@
+#!/bin/zsh
+SOURCE_DIR="$(dirname "$0")/../"
+# echo $SOURCE_DIR
+
+# VENV_PATH="$(poetry env info --path -C "$SOURCE_DIR")"
+
+# Run the Python script with all passed arguments using Poetry
+poetry run -C "$SOURCE_DIR" python "$SOURCE_DIR/ics-generator/generate_ics.py" "$@"

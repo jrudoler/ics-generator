@@ -1,18 +1,21 @@
 from transformers import AutoModelForCausalLM, AutoTokenizer
 import outlines
 from icalendar import Calendar, Event
-from typing import List, AnyStr
+from typing import List, AnyStr, Optional
 import datetime
 from pydantic import BaseModel
 from schema import EventDetails
+import os
+import argparse
 
 
-def load_model():
-    model_name = "meta-llama/Llama-3.2-1B"
-    tokenizer = AutoTokenizer.from_pretrained(model_name)
-    model = AutoModelForCausalLM.from_pretrained(model_name)
-    return tokenizer, model
+# def load_model():
+#     model_name = "meta-llama/Llama-3.2-1B"
+#     tokenizer = AutoTokenizer.from_pretrained(model_name)
+#     model = AutoModelForCausalLM.from_pretrained(model_name)
+#     return tokenizer, model
 
+# tried using small local model, but it was both slow and not accurate enough
 
 # def extract_event_details(text: str, tokenizer, model) -> dict:
 #     inputs = tokenizer(text, return_tensors="pt")
@@ -31,17 +34,24 @@ def load_model():
 #     }
 
 
-def create_ics_file(event_details: dict, filename: str = "event.ics") -> None:
-    event = Event(
-        summary=event_details["title"],
-        dtstart=event_details["start"],
-        dtend=event_details["end"],
-        location=event_details["location"],
-    )
+def create_ics_file(event_details: dict, filename: Optional[str] = None) -> None:
+    event = Event()
+    event.add("summary", event_details["title"])
+    event.add("dtstart", datetime.datetime.fromisoformat(event_details["start"]))
+    event.add("dtend", datetime.datetime.fromisoformat(event_details["end"]))
+    event.add("location", event_details["location"])
+
     cal = Calendar()
+    cal.add("prodid", "-//My Calendar//mxm.dk//")
+    cal.add("version", "2.0")
     cal.add_component(event)
 
-    with open(filename, "wb") as f:
+    if filename is None:
+        filename = event_details["filename"]
+    path = os.path.join(os.getcwd(), "data", filename)
+    if not os.path.exists(path):
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+    with open(path, "wb") as f:
         f.write(cal.to_ical())
 
 
@@ -54,22 +64,40 @@ def event_details_prompt(
     The current date and time is {{ now }}. You must use this date and time to
     help determine the start and end times of the event, as the event has to be
     scheduled in the future.
+    You must return the start and end times in ISO format. Typically it is
+    fair to assume that a standard "meeting" lasts 1 hour unless otherwise
+    specified, but other types of events may have different durations and
+    you should use your best judgement.
     The user's prompt is: {{ user_prompt }}
 
-    Return a valid JSON string with the following specification:
+    Return a valid JSON string with the following specification (dates in ISO format
+    and filenames with .ics extension and no spaces):
     {{ response_schema | schema }}
     """
 
 
 def main():
+    # New CLI argument parsing
+    parser = argparse.ArgumentParser(
+        description="Generate ICS files from event details."
+    )
+    parser.add_argument(
+        "user_prompt", type=str, help="The prompt to extract event details from."
+    )
+    parser.add_argument(
+        "--filename", type=str, help="Optional filename for the ICS file."
+    )
+    args = parser.parse_args()
+
     ## get current date and time
     now = datetime.datetime.now()
     print("Current date and time:", now)
-    # get user input
-    user_prompt = input("Enter your prompt: ")
 
-    model = outlines.models.transformers("meta-llama/Llama-3.2-1B", device="mps")
-    # model = outlines.models.openai("gpt-4o-mini")
+    # Use the user prompt from CLI arguments
+    user_prompt = args.user_prompt
+
+    # model = outlines.models.transformers("meta-llama/Llama-3.2-3B")
+    model = outlines.models.openai("gpt-4o-mini")
 
     prompt = event_details_prompt(user_prompt, now, EventDetails)
 
@@ -82,7 +110,11 @@ def main():
     )
     structure = generator(prompt)
     print(dict(structure))
-    create_ics_file(dict(structure))
+    create_ics_file(
+        dict(structure), filename=args.filename
+    )  # Pass filename if provided
+    # open the file
+    os.system(f"open {os.path.join(os.getcwd(), 'data', dict(structure)['filename'])}")
 
 
 if __name__ == "__main__":
