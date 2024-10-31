@@ -1,37 +1,18 @@
-from transformers import AutoModelForCausalLM, AutoTokenizer
+# from transformers import AutoModelForCausalLM, AutoTokenizer
 import outlines
 from icalendar import Calendar, Event
-from typing import List, AnyStr, Optional
+from typing import Optional
 import datetime
-from pydantic import BaseModel
 from schema import EventDetails
 import os
 import argparse
-
-
+from prompts import event_details_prompt
+# tried using small local model, but it was both slow and not accurate enough
 # def load_model():
 #     model_name = "meta-llama/Llama-3.2-1B"
 #     tokenizer = AutoTokenizer.from_pretrained(model_name)
 #     model = AutoModelForCausalLM.from_pretrained(model_name)
 #     return tokenizer, model
-
-# tried using small local model, but it was both slow and not accurate enough
-
-# def extract_event_details(text: str, tokenizer, model) -> dict:
-#     inputs = tokenizer(text, return_tensors="pt")
-#     with torch.no_grad():
-#         output = model.generate(**inputs, max_length=100)
-
-#     structured_output = tokenizer.decode(output[0], skip_special_tokens=True)
-#     # Parsing of structured_output into event details should be done here
-
-
-#     return {
-#         "title": "Meeting with Alex",  # Example extraction
-#         "start": "2024-11-05 14:00:00",
-#         "end": "2024-11-05 15:00:00",
-#         "location": "Office",
-#     }
 
 
 def create_ics_file(event_details: dict, filename: Optional[str] = None) -> None:
@@ -53,27 +34,6 @@ def create_ics_file(event_details: dict, filename: Optional[str] = None) -> None
         os.makedirs(os.path.dirname(path), exist_ok=True)
     with open(path, "wb") as f:
         f.write(cal.to_ical())
-
-
-@outlines.prompt
-def event_details_prompt(
-    user_prompt: str, now: datetime.datetime, response_schema: BaseModel
-):
-    """
-    You are a helpful assistant that extracts event details from a prompt.
-    The current date and time is {{ now }}. You must use this date and time to
-    help determine the start and end times of the event, as the event has to be
-    scheduled in the future.
-    You must return the start and end times in ISO format. Typically it is
-    fair to assume that a standard "meeting" lasts 1 hour unless otherwise
-    specified, but other types of events may have different durations and
-    you should use your best judgement.
-    The user's prompt is: {{ user_prompt }}
-
-    Return a valid JSON string with the following specification (dates in ISO format
-    and filenames with .ics extension and no spaces):
-    {{ response_schema | schema }}
-    """
 
 
 def main():
@@ -115,6 +75,7 @@ def main():
     )  # Pass filename if provided
     # open the file
     os.system(f"open {os.path.join(os.getcwd(), 'data', dict(structure)['filename'])}")
+    # TODO: find a nice way to clean up the data directory
 
 
 if __name__ == "__main__":

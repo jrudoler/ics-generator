@@ -1,6 +1,11 @@
 # schema.py
 
-from pydantic import BaseModel, ConfigDict, FutureDatetime, Field
+from pydantic import BaseModel, ConfigDict, Field
+
+# for now OpenAI doesn't support datetime fields so need to just
+# use strings and validate / convert
+
+# TODO: add support for participants / emails
 
 
 class EventDetails(BaseModel):
