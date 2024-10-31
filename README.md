@@ -25,5 +25,8 @@ On the command line, run
 `event "<text describing event>"`
 The program will generate a corresponding .ics file and open it using your default calendar app.
 
+### Example
+https://github.com/user-attachments/assets/6ec24fce-5233-4efa-9299-b5720301576a
+
 
 
